@@ -313,7 +313,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use static_assertions::*;
 
-    assert_eq_size!(RawHeader, [u8; HEADER_SIZE as usize]);
+    assert_eq_size!(RawHeader, [u8; MIN_HEADER_SIZE as usize]);
     assert_eq_align!(RawHeader, u8);
 
     #[test]
