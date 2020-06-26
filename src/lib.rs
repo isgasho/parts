@@ -65,3 +65,7 @@ pub use uuid;
 #[cfg(all(doctest, feature = "nightly"))]
 #[doc(include = "../README.md")]
 pub struct ReadmeDocTests;
+
+#[doc(hidden)]
+#[cfg(fuzzing)]
+pub use mbr::*;

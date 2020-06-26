@@ -2,5 +2,4 @@
 **/*.rs.bk
 Cargo.lock
 hfuzz_*
-fuzz
 .cargo
