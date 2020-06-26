@@ -862,6 +862,7 @@ mod test {
 
     #[test]
     #[should_panic = "Invalid Signature"]
+    #[cfg_attr(miri, ignore)]
     fn missing_gpt_test() {
         let mut raw = data().unwrap();
         raw[512..][..512].copy_from_slice(&[0; 512]);
