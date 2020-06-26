@@ -310,6 +310,7 @@ mod tests {
     use static_assertions::*;
 
     assert_eq_size!(RawHeader, [u8; HEADER_SIZE as usize]);
+    assert_eq_align!(RawHeader, u8);
 
     #[test]
     fn round_trip() -> Result {
