@@ -647,7 +647,7 @@ mod test_no_std {
 
     /// Should error when the MBR is invalid/missing.
     #[test]
-    #[should_panic = "MBR signature invalid"]
+    #[should_panic = "Invalid Protective MBR"]
     fn missing_mbr_test() {
         let raw = [0; (BLOCK_SIZE.get() * 2) as usize];
         let _gpt: Gpt = Gpt::from_bytes(&raw, BLOCK_SIZE).unwrap();
