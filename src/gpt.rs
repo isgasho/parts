@@ -296,7 +296,7 @@ impl<C: GptHelper<C>> Gpt<C> {
         block_size: BlockSize,
         disk_size: Size,
     ) -> Result<Self> {
-        let _mbr = {
+        {
             let mut buf = [0; MBR_SIZE];
             func(Offset(0), &mut buf)?;
             ProtectiveMbr::from_bytes(&buf)?
@@ -421,7 +421,7 @@ impl<C: GptHelper<C>> Gpt<C> {
         {
             let mbr = ProtectiveMbr::new(last_lba);
             let mut mbr_buf = [0; MBR_SIZE];
-            mbr.to_bytes(&mut mbr_buf)?;
+            mbr.to_bytes(&mut mbr_buf);
             func(Size::from_bytes(0).into(), &mbr_buf)?;
         }
 

@@ -1,6 +1,6 @@
 //! MBR definitions
 use crate::{gpt::error::*, types::*};
-use core::{convert::TryFrom, mem::size_of};
+use core::convert::{TryFrom, TryInto};
 
 /// Hard-coded legacy MBR size.
 pub const MBR_SIZE: usize = 512;
@@ -25,9 +25,9 @@ impl Default for BootCode {
 }
 
 /// GPT Protective MBR
-#[derive(PartialEq, Copy, Clone)]
-#[repr(C, packed)]
-pub(crate) struct ProtectiveMbr {
+#[cfg_attr(test, derive(PartialEq))]
+#[repr(C)]
+pub struct ProtectiveMbr {
     /// Bios boot code. Unused by GPT.
     boot_code: BootCode,
 
@@ -42,7 +42,8 @@ pub(crate) struct ProtectiveMbr {
     partitions: [MbrPart; 4],
 
     /// Hard-coded to 0xAA55-LE.
-    signature: u16,
+    // Array instead of u16 for alignment purposes
+    signature: [u8; 2],
 }
 
 // Crate public
@@ -51,7 +52,6 @@ impl ProtectiveMbr {
     ///
     /// `last_lba`, the last usable logical block address on the device.
     pub fn new(last_lba: Block) -> Self {
-        let last_lba: u64 = last_lba.0;
         Self {
             boot_code: Default::default(),
             unique_signature: [0u8; 4],
@@ -59,67 +59,59 @@ impl ProtectiveMbr {
             partitions: [
                 MbrPart {
                     boot: 0,
-                    //
-                    start_head: 0x00,
-                    start_sector: 0x02,
-                    start_track: 0x00,
-                    //
+                    start_chs: 0x000200u32.to_le_bytes()[..3].try_into().unwrap(),
                     os_type: 0xEE,
                     // Technically incorrect?, but
                     // Existing implementations seem to do the same thing here.
-                    end_head: 0xFF,
-                    end_sector: 0xFF,
-                    end_track: 0xFF,
-                    //
-                    start_lba: 0x01,
-                    size_lba: u32::try_from(last_lba).unwrap_or(u32::max_value()),
+                    end_chs: 0xFFFFFFu32.to_le_bytes()[..3].try_into().unwrap(),
+                    start_lba: 1u32.to_le_bytes(),
+                    size_lba: u32::try_from(last_lba.0)
+                        .unwrap_or(u32::max_value())
+                        .to_le_bytes(),
                 },
                 MbrPart::default(),
                 MbrPart::default(),
                 MbrPart::default(),
             ],
-            signature: 0xAA55,
+            signature: 0xAA55u16.to_le_bytes(),
         }
     }
 
-    /// Read a `ProtectiveMbr` from a byte slice.
+    /// Zero-copy `ProtectiveMbr` from byte slice.
+    ///
+    /// # Panics
+    ///
+    /// - If `source` is not [`MBR_SIZE`].
     ///
     /// # Errors
     ///
-    /// - If the MBR is invalid
-    /// - [`Error::NotEnough`] if `source` is not [`MBR_SIZE`] bytes.
-    pub fn from_bytes(source: &[u8]) -> Result<Self> {
-        if source.len() != MBR_SIZE {
-            return Err(Error::NotEnough);
-        }
+    /// - [`Error::Mbr`] If the MBR is invalid
+    pub fn from_bytes(source: &[u8]) -> Result<&Self> {
+        assert_eq!(source.len(), MBR_SIZE, "BUG: Source must be MBR_SIZE bytes");
         // SAFETY:
-        // - `source` is valid for `MBR_SIZE` bytes
-        // - `ProtectiveMbr` is `MBR_SIZE` bytes
-        // - `ProtectiveMbr` is `repr(C, packed)`
-        // - `read_unaligned` is used
-        let mbr = unsafe { (source.as_ptr() as *const ProtectiveMbr).read_unaligned() };
+        // - `ProtectiveMbr` has alignment of 1.
+        // - `size_of::<ProtectiveMbr>` is MBR_SIZE.
+        // - `source` is valid for `MBR_SIZE`
+        let mbr = unsafe { &*(source.as_ptr() as *const ProtectiveMbr) };
         mbr.validate()?;
         Ok(mbr)
     }
 
     /// Write a GPT Protective MBR to `dest`
     ///
-    /// # Errors
+    /// # Panics
     ///
-    /// - [`Error::NotEnough`] if `dest` is not [`MBR_SIZE`] bytes.
-    pub fn to_bytes(&self, dest: &mut [u8]) -> Result<()> {
-        if dest.len() != MBR_SIZE {
-            return Err(Error::NotEnough);
-        }
+    /// - If `dest` is not [`MBR_SIZE`] bytes.
+    pub fn to_bytes(&self, dest: &mut [u8]) {
+        assert_eq!(dest.len(), MBR_SIZE, "BUG: Dest must be MBR_SIZE bytes");
         // SAFETY:
         // - `self` is valid and aligned.
-        // - `ProtectiveMbr`/`Self` is `repr(C, packed)`
+        // - `size_of::<ProtectiveMbr>` is MBR_SIZE.
         let raw = unsafe {
             let ptr = self as *const ProtectiveMbr as *const u8;
-            core::slice::from_raw_parts(ptr, size_of::<ProtectiveMbr>())
+            core::slice::from_raw_parts(ptr, MBR_SIZE)
         };
         dest.copy_from_slice(raw);
-        Ok(())
     }
 }
 
@@ -129,26 +121,44 @@ impl ProtectiveMbr {
     ///
     /// # Errors
     ///
-    /// The MBR is considered invalid if any of the following are true:
-    ///
-    /// - The signature is not correct
-    /// - The GPT Protective partition is missing
-    /// - If other partitions exist. In this case the error is [`Error::NotGpt`]
+    /// - [`Error::Mbr`] The MBR is considered invalid if any of it's fields
+    ///   differ from expectations.
     fn validate(&self) -> Result<()> {
-        if self.signature != 0xAA55 {
-            return Err(Error::Invalid("MBR signature invalid"));
+        if self.unique_signature != [0; 4] {
+            return Err(Error::Mbr("Invalid Protective MBR"));
         }
-        let part: MbrPart = self.partitions[0];
+        if self.unknown != [0; 2] {
+            return Err(Error::Mbr("Invalid Protective MBR"));
+        }
+        let part: &MbrPart = &self.partitions[0];
+        if part.boot != 0 {
+            return Err(Error::Mbr("Invalid Protective MBR"));
+        }
+        if part.start_chs != 0x000200u32.to_le_bytes()[..3] {
+            return Err(Error::Mbr("Invalid Protective MBR"));
+        }
         if part.os_type != 0xEE {
-            return Err(Error::Invalid("Missing GPT Protective Partition"));
+            return Err(Error::Mbr("Invalid Protective MBR"));
         }
-
-        let parts = self.partitions;
-        for part in &parts[1..] {
+        if part.end_chs != 0xFFFFFFu32.to_le_bytes()[..3] {
+            return Err(Error::Mbr("Invalid Protective MBR"));
+        }
+        if part.start_lba != 1u32.to_le_bytes() {
+            return Err(Error::Mbr("Invalid Protective MBR"));
+        }
+        // TODO: Actual size check
+        if part.size_lba == 0u32.to_le_bytes() {
+            return Err(Error::Mbr("Invalid Protective MBR"));
+        }
+        for part in &self.partitions[1..] {
             if *part != MbrPart::default() {
-                return Err(Error::Invalid("Protective MBR has other partitions"));
+                return Err(Error::Mbr("Invalid Protective MBR"));
             }
         }
+        if self.signature != 0xAA55u16.to_le_bytes() {
+            return Err(Error::Mbr("Invalid Protective MBR"));
+        }
+
         Ok(())
     }
 }
@@ -171,55 +181,67 @@ struct MbrPart {
 
     /// Cylinder, Head, Sector. Unused by GPT.
     /// Hard-coded to 0x000200.
-    start_head: u8,
-    start_sector: u8,
-    start_track: u8,
+    start_chs: [u8; 3],
 
     /// Hard-coded to 0xEE, GPT Protective.
     os_type: u8,
 
     /// Cylinder, Head, Sector. Unused by GPT.
     /// De facto Hard-coded to 0xFFFFFF.
-    end_head: u8,
-    end_sector: u8,
-    end_track: u8,
+    end_chs: [u8; 3],
 
     /// Hard-coded to 1, the start of the GPT Header.
-    start_lba: u32,
+    // Array instead of u32 for alignment purposes, without having to be
+    // `repr(packed)`.
+    start_lba: [u8; 4],
 
-    /// Size of the disk, in LBA, minus one. So the last *usable* LBA.
-    size_lba: u32,
+    /// Size of the disk, in LBA, minus one, or 0xFFFFFFFF if the size is too
+    /// large.
+    // Array instead of u32 for alignment purposes, without having to be
+    // `repr(packed)`.
+    size_lba: [u8; 4],
 }
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
-    use crate::util::{Result, *};
+    use crate::util::Result;
     use static_assertions::*;
 
     assert_eq_size!(MbrPart, [u8; 16]);
     assert_eq_size!(ProtectiveMbr, [u8; MBR_SIZE]);
+    assert_eq_align!(ProtectiveMbr, MbrPart, u8);
+    assert_eq_align!(MbrPart, u8);
+    assert_eq_align!(BootCode, u8);
+
+    static DATA: &[u8] = include_bytes!("../tests/data/test_parts_cf");
 
     /// Basic reading should work and validate correctly.
     #[test]
     fn read_test() -> Result {
-        let data = data()?;
-        let _mbr = ProtectiveMbr::from_bytes(&data[..MBR_SIZE])?;
+        let _mbr = ProtectiveMbr::from_bytes(&DATA[..MBR_SIZE])?;
         Ok(())
     }
 
+    /// A correct Protective MBR can be read and written out without changing.
     #[test]
     fn roundtrip() -> Result {
-        let raw = data()?;
-        let raw_mbr = &raw[..MBR_SIZE];
-        let my_mbr = ProtectiveMbr::from_bytes(raw_mbr)?;
+        let source_mbr = &DATA[..MBR_SIZE];
+        let parsed_source_mbr = ProtectiveMbr::from_bytes(source_mbr)?;
         let mut raw_my_mbr = [0u8; MBR_SIZE];
-        my_mbr.to_bytes(&mut raw_my_mbr)?;
-        //
-        assert_eq!(&raw_my_mbr[..], &raw_mbr[..]);
+        parsed_source_mbr.to_bytes(&mut raw_my_mbr);
+
+        assert_eq!(
+            &raw_my_mbr[..],
+            &source_mbr[..],
+            "Written MBR did not match read MBR"
+        );
         let parsed_raw_my_mbr = ProtectiveMbr::from_bytes(&raw_my_mbr)?;
-        assert_eq!(parsed_raw_my_mbr, my_mbr);
-        //
+        assert_eq!(
+            parsed_raw_my_mbr, parsed_source_mbr,
+            "MBR was not read the same as it was written?"
+        );
+
         Ok(())
     }
 }

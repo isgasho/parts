@@ -26,6 +26,9 @@ pub enum Error {
     /// Attempted to add overlapping partitions, or partition was out of usable
     /// range
     Overlap,
+
+    /// The Protective MBR was invalid: {0}
+    Mbr(&'static str),
 }
 
 pub type Result<T> = core::result::Result<T, Error>;
