@@ -20,7 +20,7 @@ const REVISION: u32 = 0x0001_0000;
 /// Current/supported GPT Header size.
 ///
 /// Only used when writing, can in theory read and validate larger headers.
-pub const HEADER_SIZE: u32 = 92;
+pub const MIN_HEADER_SIZE: u32 = 92;
 
 /// Current/supported GPT Partition Entry size.
 ///
@@ -59,9 +59,9 @@ fn calculate_crc(mut header: RawHeader, extra: &[u8]) -> u32 {
     };
     let mut digest = crc32::Digest::new(crc32::IEEE);
     // Header bytes
-    digest.write(&source_bytes[..HEADER_SIZE as usize]);
+    digest.write(&source_bytes[..MIN_HEADER_SIZE as usize]);
     // Any extra. Shouldn't change the result if passed an empty slice?
-    let size = (header.header_size - HEADER_SIZE) as usize;
+    let size = (header.header_size - MIN_HEADER_SIZE) as usize;
     digest.write(&extra[..size]);
     digest.sum32()
 }
@@ -124,7 +124,7 @@ impl Default for RawHeader {
         RawHeader {
             signature: EFI_PART,
             revision: REVISION,
-            header_size: HEADER_SIZE,
+            header_size: MIN_HEADER_SIZE,
             partition_size: PARTITION_ENTRY_SIZE,
             // Default values
             header_crc32: Default::default(),
@@ -228,6 +228,10 @@ impl Header {
 }
 
 impl Header {
+    pub fn _from_bytes(source: &[u8]) -> Result<&Self> {
+        // assert!(source.len() >=);
+        todo!()
+    }
     /// Read the GPT Header from a byte slice
     ///
     /// # Errors
@@ -248,12 +252,12 @@ impl Header {
             return Err(Error::Invalid("Invalid Signature"));
         }
         // See [`RawHeader::header_size`]
-        if raw.header_size < HEADER_SIZE || raw.header_size as u64 > block_size.get() {
+        if raw.header_size < MIN_HEADER_SIZE || raw.header_size as u64 > block_size.get() {
             return Err(Error::Invalid(
                 "Header size invalid, less than 92 or bigger than the block size",
             ));
         }
-        if raw.header_crc32 != calculate_crc(raw, &source[HEADER_SIZE as usize..]) {
+        if raw.header_crc32 != calculate_crc(raw, &source[MIN_HEADER_SIZE as usize..]) {
             return Err(Error::Invalid("CRC mismatch"));
         }
         let header = Header {
@@ -318,12 +322,12 @@ mod tests {
         let raw_primary = &raw[BLOCK_SIZE.get() as usize..][..BLOCK_SIZE.get() as usize];
         let parsed_raw_primary = Header::from_bytes(raw_primary, BLOCK_SIZE)?;
         //
-        let mut raw_parsed_raw_primary = [0u8; HEADER_SIZE as usize];
+        let mut raw_parsed_raw_primary = [0u8; MIN_HEADER_SIZE as usize];
         parsed_raw_primary.to_bytes(&mut raw_parsed_raw_primary)?;
         //
         assert_eq!(
             &raw_parsed_raw_primary[..],
-            &raw_primary[..HEADER_SIZE as usize]
+            &raw_primary[..MIN_HEADER_SIZE as usize]
         );
         //
         Ok(())
@@ -357,8 +361,8 @@ mod tests {
         //
         let mut raw_my_primary = [0u8; BLOCK_SIZE.get() as usize];
         let mut raw_my_backup = [0u8; BLOCK_SIZE.get() as usize];
-        my_primary.to_bytes(&mut raw_my_primary[..HEADER_SIZE as usize])?;
-        my_backup.to_bytes(&mut raw_my_backup[..HEADER_SIZE as usize])?;
+        my_primary.to_bytes(&mut raw_my_primary[..MIN_HEADER_SIZE as usize])?;
+        my_backup.to_bytes(&mut raw_my_backup[..MIN_HEADER_SIZE as usize])?;
         //
         assert_eq!(&raw_my_primary[..], &raw_primary[..]);
         //
@@ -382,7 +386,7 @@ mod tests {
             "UUID didn't match test data"
         );
         let mut written = vec![0; BLOCK_SIZE.get() as usize];
-        header.to_bytes(&mut written[..HEADER_SIZE as usize])?;
+        header.to_bytes(&mut written[..MIN_HEADER_SIZE as usize])?;
         assert_eq!(
             written.len(),
             raw.len(),
@@ -403,10 +407,10 @@ mod tests {
             "UUID didn't match test data"
         );
         let mut written = vec![0; LARGE_BLOCK_SIZE.get() as usize];
-        header.to_bytes(&mut written[..HEADER_SIZE as usize])?;
+        header.to_bytes(&mut written[..MIN_HEADER_SIZE as usize])?;
         // Compare only header bytes
-        let written = &written[..HEADER_SIZE as usize];
-        let raw = &raw[..HEADER_SIZE as usize];
+        let written = &written[..MIN_HEADER_SIZE as usize];
+        let raw = &raw[..MIN_HEADER_SIZE as usize];
         assert_eq!(written.len(), raw.len());
         assert_eq!(written, raw);
         //

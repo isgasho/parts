@@ -589,7 +589,7 @@ impl<C: GptHelper<C>> GptC<C> {
         last_lba: Block,
         block_size: BlockSize,
     ) -> Result<()> {
-        let mut header_buf = [0; HEADER_SIZE as usize];
+        let mut header_buf = [0; MIN_HEADER_SIZE as usize];
         let mut partition_buf = [0; PARTITION_ENTRY_SIZE as usize];
         //
         header.to_bytes(&mut header_buf)?;
