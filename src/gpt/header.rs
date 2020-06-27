@@ -1,7 +1,7 @@
 //! Handle GPT header
 use super::error::*;
 use crate::types::*;
-use core::{mem, slice};
+use core::{convert::TryInto, mem, slice};
 use crc::{crc32, Hasher32};
 use uuid::Uuid;
 
@@ -69,7 +69,7 @@ fn calculate_crc(mut header: RawHeader, extra: &[u8]) -> u32 {
 /// The GPT Header Structure
 #[derive(Debug, Copy, Clone)]
 #[repr(C, packed)]
-struct RawHeader {
+pub struct RawHeader {
     /// Hard-coded to [`EFI_PART`]
     signature: u64,
 
@@ -228,9 +228,19 @@ impl Header {
 }
 
 impl Header {
-    pub fn _from_bytes(source: &[u8]) -> Result<&Self> {
-        // assert!(source.len() >=);
-        todo!()
+    pub fn _from_bytes(source: &[u8], block_size: BlockSize) -> Result<&RawHeader> {
+        assert!(
+            source.len() >= 92
+                && TryInto::<u64>::try_into(source.len()).expect("Source len too big")
+                    <= block_size.get(),
+            "BUG: Source must be between MIN_PARTITIONS_BYTES and `block_size` bytes"
+        );
+        // SAFETY:
+        // - `RawHeader` has alignment of 1.
+        // - `size_of::<RawHeader>` is at least MIN_HEADER_SIZE.
+        // - `source` is valid for `MIN_HEADER_SIZE`
+        let header = unsafe { &*(source.as_ptr() as *const RawHeader) };
+        Ok(header)
     }
     /// Read the GPT Header from a byte slice
     ///
