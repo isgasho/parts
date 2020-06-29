@@ -26,14 +26,18 @@ pretty_assertions = "0.6.1"
 
 [features]
 default = ["std", "serde"]
+
 # Enable support for various standard library types
 std = ["thiserror", "uuid/std", "alloc"]
+
 # Alloc support
 # NOTE: This brings in `getrandom`,
 # which while no_std may lack an implementation for your embedded target
 alloc = ["uuid/v4"]
+
 # Enable serde support
 serde = ["serde_crate", "serde_crate/derive", "uuid/serde"]
+
 # Nightly is used for docs.
 nightly = []
 
