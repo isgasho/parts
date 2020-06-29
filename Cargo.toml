@@ -23,6 +23,7 @@ static_assertions = "1.1.0"
 anyhow            = "1.0.31"
 thiserror         = "1.0.20"
 pretty_assertions = "0.6.1"
+criterion         = "0.3.2"
 
 [features]
 default = ["std", "serde"]
@@ -44,3 +45,7 @@ nightly = []
 [package.metadata.docs.rs]
 features = ["nightly"]
 targets  = []
+
+[[bench]]
+name    = "bench"
+harness = false
