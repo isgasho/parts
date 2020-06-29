@@ -5,6 +5,8 @@ use serde_crate::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Define a partition type
+///
+/// The UUID literal MUST be in all uppercase hex.
 macro_rules! partition_type {
     ($(
         #[$($meta:meta)*]
