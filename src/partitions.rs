@@ -38,7 +38,7 @@ macro_rules! partition_type {
             pub fn to_uuid(self) -> Uuid {
                 match self {
                     $(
-                        Self::$name => Uuid::parse_str($uuid).expect("BUG: Partition type defined incorrectly"),
+                        Self::$name => Uuid::parse($uuid).expect("BUG: Partition type defined incorrectly"),
                     )+
                     Self::Unknown(u) => u,
                 }
@@ -50,13 +50,13 @@ macro_rules! partition_type {
             ///
             /// - If `uuid` can't be parsed
             pub fn from_uuid(uuid: Uuid) -> Self {
-                let mut buf = Uuid::encode_buffer();
-                let s = uuid.to_hyphenated().encode_upper(&mut buf);
+                let mut buf = [0; 36];
+                let s = uuid.to_str_upper(&mut buf);
                 match &*s {
                     $(
                         $uuid => Self::$name,
                     )*
-                    u => Self::Unknown(Uuid::parse_str(u).expect("BUG: Couldn't parse UUID")),
+                    u => Self::Unknown(Uuid::parse(u).expect("BUG: Couldn't parse UUID")),
                 }
             }
         }

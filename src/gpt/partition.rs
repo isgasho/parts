@@ -1,8 +1,5 @@
 //! Handle partitions
-use super::{
-    error::*,
-    header::{uuid_hack, PARTITION_ENTRY_SIZE},
-};
+use super::{error::*, header::PARTITION_ENTRY_SIZE};
 use crate::{partitions::PartitionType, types::*};
 use arrayvec::ArrayString;
 use core::{
@@ -150,8 +147,8 @@ impl Partition {
                 name.push(r);
             });
         Ok(Partition {
-            partition_type: PartitionType::from_uuid(uuid_hack(part.partition_type_guid)),
-            guid: uuid_hack(part.partition_guid),
+            partition_type: PartitionType::from_uuid(Uuid::from_bytes_me(part.partition_type_guid)),
+            guid: Uuid::from_bytes_me(part.partition_guid),
             start: Block(part.starting_lba),
             end: Block(part.ending_lba),
             attributes: part.attributes,
@@ -166,8 +163,8 @@ impl Partition {
     /// - [`Error::NotEnough`] if `dest` is too small.
     pub(crate) fn to_bytes(&self, dest: &mut [u8]) -> Result<()> {
         let mut raw = RawPartition::default();
-        raw.partition_type_guid = *uuid_hack(*self.partition_type.to_uuid().as_bytes()).as_bytes();
-        raw.partition_guid = *uuid_hack(*self.guid.as_bytes()).as_bytes();
+        raw.partition_type_guid = self.partition_type.to_uuid().to_bytes_me();
+        raw.partition_guid = self.guid.to_bytes_me();
         raw.starting_lba = self.start.0;
         raw.ending_lba = self.end.0;
         raw.attributes = self.attributes;
@@ -384,7 +381,7 @@ mod tests {
         let raw = data()?;
         let raw_part = &raw[OFFSET..][..PARTITION_ENTRY_SIZE as usize];
         let part = PartitionBuilder::new(
-            Uuid::parse_str(CF_PART_GUID)?,
+            Uuid::parse(CF_PART_GUID)?,
             &crate::Gpt::new(Uuid::nil(), Size::from_mib(1), BlockSize::new(512)),
         )
         .start(Size::from_mib(1) / BLOCK_SIZE)

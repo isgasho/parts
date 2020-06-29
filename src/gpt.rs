@@ -825,9 +825,9 @@ mod test {
         assert_eq!(gpt.partitions().len(), 1);
         assert_eq!(
             gpt.partitions()[0].uuid(),
-            Uuid::parse_str(CF_PART_GUID).unwrap()
+            Uuid::parse(CF_PART_GUID).unwrap()
         );
-        assert_eq!(gpt.uuid, Uuid::parse_str(CF_DISK_GUID).unwrap());
+        assert_eq!(gpt.uuid, Uuid::parse(CF_DISK_GUID).unwrap());
     }
 
     /// Test that we can read a GPT from another tool
@@ -934,12 +934,9 @@ mod test {
         let test_data = data()?;
         let test_gpt = read_gpt_size::<Vec>(&test_data)?;
         //
-        let mut gpt: Gpt<Vec> = Gpt::new(
-            Uuid::parse_str(CF_DISK_GUID)?,
-            Size::from_mib(10),
-            BLOCK_SIZE,
-        );
-        let part = PartitionBuilder::new(Uuid::parse_str(CF_PART_GUID)?, &gpt)
+        let mut gpt: Gpt<Vec> =
+            Gpt::new(Uuid::parse(CF_DISK_GUID)?, Size::from_mib(10), BLOCK_SIZE);
+        let part = PartitionBuilder::new(Uuid::parse(CF_PART_GUID)?, &gpt)
             // FIXME: Shouldn't have to use BLOCK_SIZE here
             .start(Size::from_mib(1) / BLOCK_SIZE)
             .size(Size::from_mib(8))

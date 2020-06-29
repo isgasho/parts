@@ -27,22 +27,6 @@ pub const MIN_HEADER_SIZE: u32 = 92;
 /// Only used when writing, can in theory read and validate larger entries.
 pub const PARTITION_ENTRY_SIZE: u32 = 128;
 
-/// GPT stores UUID's in big endian, but with the time* fields as little endian.
-///
-/// See Appendix A for more details.
-///
-/// See https://github.com/uuid-rs/uuid/issues/462
-pub fn uuid_hack(uuid: [u8; 16]) -> Uuid {
-    // Works because from_bytes treats the fields as big endian
-    // as_fields types them for us, still big-endian
-    // and swap_bytes swaps the bytes, making them little endian.
-    // to_le_bytes can't be used because it's a no-op on little endian computers.
-    // TODO: Replace with from_bytes_le if uuid ever adds that back. :(
-    let uuid = Uuid::from_bytes(uuid);
-    let (d1, d2, d3, d4) = uuid.as_fields();
-    Uuid::from_fields(d1.swap_bytes(), d2.swap_bytes(), d3.swap_bytes(), d4).unwrap()
-}
-
 /// Calculate the Header CRC for a [`RawHeader`].
 ///
 /// `extra` is all bytes in the rest of the block, if any.
@@ -275,7 +259,7 @@ impl Header {
             alt: Block(raw.alt_lba),
             first_usable: Block(raw.first_usable_lba),
             last_usable: Block(raw.last_usable_lba),
-            uuid: uuid_hack(raw.disk_guid),
+            uuid: Uuid::from_bytes_me(raw.disk_guid),
             partitions: raw.partitions,
             array: Block(raw.partition_array_start),
             partitions_crc32: raw.partitions_crc32,
@@ -295,7 +279,7 @@ impl Header {
         raw.alt_lba = self.alt.0;
         raw.first_usable_lba = self.first_usable.0;
         raw.last_usable_lba = self.last_usable.0;
-        raw.disk_guid = *uuid_hack(*self.uuid.as_bytes()).as_bytes();
+        raw.disk_guid = self.uuid.to_bytes_me();
         raw.partition_array_start = self.array.0;
         raw.partitions = self.partitions;
         // No need to calculate or be passed it, should be set when `self` is created.
@@ -353,7 +337,7 @@ mod tests {
             HeaderKind::Primary,
             128,         // CFDisk always sets partitions to 128
             439_418_962, // Expected partition CRC32
-            Uuid::parse_str(CF_DISK_GUID).unwrap(),
+            Uuid::parse(CF_DISK_GUID).unwrap(),
             BLOCK_SIZE,
             Size::from_bytes(TEN_MIB_BYTES as u64),
         );
@@ -361,7 +345,7 @@ mod tests {
             HeaderKind::Backup,
             128,         // CFDisk always sets partitions to 128
             439_418_962, // Expected partition CRC32
-            Uuid::parse_str(CF_DISK_GUID).unwrap(),
+            Uuid::parse(CF_DISK_GUID).unwrap(),
             BLOCK_SIZE,
             Size::from_bytes(TEN_MIB_BYTES as u64),
         );
@@ -392,7 +376,7 @@ mod tests {
         let header = Header::from_bytes(raw, BLOCK_SIZE).map_err(anyhow::Error::msg)?;
         assert_eq!(
             header.uuid,
-            Uuid::parse_str(CF_DISK_GUID).unwrap(),
+            Uuid::parse(CF_DISK_GUID).unwrap(),
             "UUID didn't match test data"
         );
         let mut written = vec![0; BLOCK_SIZE.get() as usize];
@@ -413,7 +397,7 @@ mod tests {
         let header = Header::from_bytes(raw, BLOCK_SIZE).map_err(anyhow::Error::msg)?;
         assert_eq!(
             header.uuid,
-            Uuid::parse_str(CF_DISK_GUID).unwrap(),
+            Uuid::parse(CF_DISK_GUID).unwrap(),
             "UUID didn't match test data"
         );
         let mut written = vec![0; LARGE_BLOCK_SIZE.get() as usize];
