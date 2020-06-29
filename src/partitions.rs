@@ -47,10 +47,6 @@ macro_rules! partition_type {
             }
 
             /// Get PartitionType from [`Uuid`]
-            ///
-            /// # Panics
-            ///
-            /// - If `uuid` can't be parsed
             pub fn from_uuid(uuid: Uuid) -> Self {
                 let mut buf = [0; 36];
                 let s = uuid.to_str_upper(&mut buf);
@@ -58,7 +54,7 @@ macro_rules! partition_type {
                     $(
                         $uuid => Self::$name,
                     )*
-                    u => Self::Unknown(Uuid::parse(u).expect("BUG: Couldn't parse UUID")),
+                    _ => Self::Unknown(uuid),
                 }
             }
         }
