@@ -12,7 +12,7 @@ description = "A GPT Partition Manager"
 [dependencies]
 uuid        = { git = "https://github.com/DianaNites/uuid", branch = "main", default-features = false }
 crc         = { version = "1.8.1", default-features = false }
-derive_more = "0.99.8"
+derive_more = "0.99.9"
 displaydoc  = { version = "0.1.6", default-features = false }
 thiserror   = { version = "1.0.20", optional = true }
 serde_crate = { package = "serde", version = "1.0.114", default-features = false, optional = true }
