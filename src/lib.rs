@@ -58,6 +58,8 @@ pub use gpt::{
 };
 pub use partitions::PartitionType;
 
+pub mod new_gpt;
+
 // Re-exports
 pub use arrayvec;
 pub use uuid;
