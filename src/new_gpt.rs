@@ -18,34 +18,6 @@ impl fmt::Display for ReadError {
     }
 }
 
-/// A simple `no_std` compatible `Read` trait.
-///
-/// On `no_std`, it's implemented for `&[u8]`,
-/// and for std it's implemented for `T: io::Read`,
-/// which *also* includes `&[u8]`.
-pub trait Read {
-    /// Read the exact number of bytes required to fill `buf`.
-    fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), ReadError>;
-}
-
-#[cfg(not(feature = "std"))]
-impl Read for &[u8] {
-    fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), ReadError> {
-        let len = core::cmp::min(buf.len(), self.len());
-        let (a, b) = self.split_at(len);
-        buf[..len].copy_from_slice(a);
-        *self = b;
-        Ok(())
-    }
-}
-
-#[cfg(feature = "std")]
-impl<T: std::io::Read> Read for T {
-    fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), ReadError> {
-        self.read_exact(buf).or(Err(ReadError))
-    }
-}
-
 /// A GUID Partition Table
 #[derive(Debug)]
 pub struct Gpt {
@@ -79,7 +51,12 @@ impl Gpt {
     }
 
     /// Read a GUID Partition Table
-    pub fn read<R: Read>(_source: R) -> Result<Self> {
+    pub fn read<R>(_source: R) -> Result<Self> {
+        todo!()
+    }
+
+    /// Read a GUID Partition Table using the function `F`.
+    pub fn read_fn<F: FnMut(u64, &mut [u8]) -> Result<(), ReadError>>(_: F) -> Result<Self> {
         todo!()
     }
 
@@ -97,5 +74,22 @@ impl Gpt {
 impl Default for Gpt {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn read() {
+        let source: &[u8] = &[1; 1];
+        let f = std::fs::File::open("path").unwrap();
+        let _ = Gpt::read(source);
+        let _ = Gpt::read(f);
+        let _ = Gpt::read_fn(|_, buf| {
+            buf.copy_from_slice(source);
+            Ok(())
+        });
     }
 }
