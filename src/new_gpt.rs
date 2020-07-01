@@ -1,11 +1,11 @@
 //! Gpt stuff
 #![allow(missing_docs)]
-use core::fmt;
+use core::{convert::TryFrom, fmt};
 use uuid::Uuid;
 
 pub type Result<T, E = ()> = core::result::Result<T, E>;
 
-/// A simple `no_std` error type for [`Read`].
+/// A simple `no_std` error type.
 #[derive(Debug)]
 pub struct ReadError;
 
@@ -51,11 +51,48 @@ impl Gpt {
     }
 
     /// Read a GUID Partition Table
-    pub fn read<R>(_source: R) -> Result<Self> {
-        todo!()
+    #[cfg(feature = "std")]
+    pub fn read<R: std::io::Read + std::io::Seek>(mut source: R) -> Result<Self> {
+        Self::read_fn(|offset, buf| {
+            source
+                .seek(std::io::SeekFrom::Start(offset))
+                .or(Err(ReadError))?;
+            source.read_exact(buf).or(Err(ReadError))?;
+            Ok(())
+        })
+    }
+
+    /// Read a GUID Partition Table
+    pub fn read_bytes(source: &[u8]) -> Result<Self> {
+        Self::read_fn(|offset, buf| {
+            let offset = usize::try_from(offset).or(Err(ReadError))?;
+            buf.copy_from_slice(
+                source
+                    .get(offset..)
+                    .ok_or(ReadError)?
+                    .get(..buf.len())
+                    .ok_or(ReadError)?,
+            );
+            Ok(())
+        })
     }
 
     /// Read a GUID Partition Table using the function `F`.
+    ///
+    /// `F` is a function or closure taking an offset and a buffer to write in
+    /// to.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use parts::new_gpt::Gpt;
+    /// # fn no_std_read_at(_:u64, _:&mut [u8])
+    ///
+    /// Gpt::read_fn(|offset, buf| {
+    ///     no_std_read_at(offset, buf);
+    ///     Ok(())
+    /// }).unwrap();
+    /// ```
     pub fn read_fn<F: FnMut(u64, &mut [u8]) -> Result<(), ReadError>>(_: F) -> Result<Self> {
         todo!()
     }
@@ -74,22 +111,5 @@ impl Gpt {
 impl Default for Gpt {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn read() {
-        let source: &[u8] = &[1; 1];
-        let f = std::fs::File::open("path").unwrap();
-        let _ = Gpt::read(source);
-        let _ = Gpt::read(f);
-        let _ = Gpt::read_fn(|_, buf| {
-            buf.copy_from_slice(source);
-            Ok(())
-        });
     }
 }
