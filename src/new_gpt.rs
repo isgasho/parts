@@ -50,7 +50,12 @@ impl Gpt {
         }
     }
 
-    /// Read a GUID Partition Table
+    /// Read a GUID Partition Table from `source`.
+    ///
+    /// # Errors
+    ///
+    /// - If `source` does.
+    /// - If the GUID Partition Table is invalid.
     #[cfg(feature = "std")]
     pub fn read<R: std::io::Read + std::io::Seek>(mut source: R, block_size: u64) -> Result<Self> {
         let disk_size = source.seek(std::io::SeekFrom::End(0)).or(Err(()))?;
@@ -67,7 +72,11 @@ impl Gpt {
         )
     }
 
-    /// Read a GUID Partition Table
+    /// Read a GUID Partition Table from `source`.
+    ///
+    /// # Errors
+    ///
+    /// - If the GUID Partition Table is invalid.
     pub fn read_bytes(source: &[u8], block_size: u64) -> Result<Self> {
         Self::read_fn(
             |offset, buf| {
@@ -89,22 +98,34 @@ impl Gpt {
     /// Read a GUID Partition Table using the function `F`.
     ///
     /// `F` is a function or closure taking an offset and a buffer to write in
-    /// to.
+    /// to. The buffer must be fully filled.
     ///
     /// This is useful in `no_std` environments, where `std::io::Read`
     /// doesn't exist, and it would be impractical to read the entire disk into
     /// a slice.
     ///
+    /// # Errors
+    ///
+    /// - If `F` does.
+    /// - If the GUID Partition Table is invalid.
+    ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,no_run
     /// # use parts::new_gpt::Gpt;
-    /// # fn no_std_read_at(_: u64, _:&mut [u8])
+    /// # fn no_std_read_at(_: u64, _:&mut [u8]) {}
+    /// # let disk_size = 0;
+    /// # let block_size = 0;
     ///
-    /// Gpt::read_fn(|offset, buf| {
-    ///     no_std_read_at(offset, buf);
-    ///     Ok(())
-    /// }).unwrap();
+    /// Gpt::read_fn(
+    ///     |offset, buf| {
+    ///         no_std_read_at(offset, buf);
+    ///         Ok(())
+    ///     },
+    ///     block_size,
+    ///     disk_size,
+    /// )
+    /// .unwrap();
     /// ```
     pub fn read_fn<F: FnMut(u64, &mut [u8]) -> Result<(), ReadError>>(
         _: F,
@@ -114,13 +135,58 @@ impl Gpt {
         todo!()
     }
 
-    /// Set GPT disk size
-    pub fn set_size(&mut self, disk_size: u64) {
-        self.disk_size = disk_size;
+    /// Write the GUID Partition Table to `dest`.
+    ///
+    /// # Errors
+    ///
+    /// - If `dest` does.
+    #[cfg(feature = "std")]
+    pub fn write<WS: std::io::Write + std::io::Seek>(&self, dest: WS) -> Result<()> {
+        todo!()
     }
 
-    /// Set GPT block size
-    pub fn set_block_size(&mut self, block_size: u64) {
-        self.block_size = block_size;
+    /// Write the GUID Partition Table to `dest`.
+    ///
+    /// # Errors
+    ///
+    /// - If `dest` is too small.
+    pub fn write_bytes(&self, dest: &mut [u8]) -> Result<()> {
+        self.write_fn(|offset, buf| {
+            let offset = usize::try_from(offset).or(Err(()))?;
+            dest.get_mut(offset..)
+                .ok_or(())?
+                .get_mut(..buf.len())
+                .ok_or(())?
+                .copy_from_slice(buf);
+            Ok(())
+        })
+    }
+
+    /// Write the GUID Partition Table using the function `F`.
+    ///
+    /// `F` is a function or closure taking an offset and a buffer to write
+    /// from.
+    ///
+    /// This is useful in `no_std` environments, where `std::io::Write`
+    /// doesn't exist, and it would be impractical to use a slice.
+    ///
+    /// # Errors
+    ///
+    /// - If `F` does.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use parts::new_gpt::Gpt;
+    /// # fn no_std_write_at(_: u64, _: &[u8]) {}
+    /// # let gpt = Gpt::new(0, 0);
+    ///
+    /// gpt.write_fn(|offset, buf| {
+    ///     no_std_write_at(offset, buf);
+    ///     Ok(())
+    /// }).unwrap();
+    /// ```
+    pub fn write_fn<F: FnMut(u64, &[u8]) -> Result<()>>(&self, _: F) -> Result<()> {
+        todo!()
     }
 }

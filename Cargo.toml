@@ -17,6 +17,7 @@ displaydoc  = { version = "0.1.6", default-features = false }
 thiserror   = { version = "1.0.20", optional = true }
 serde_crate = { package = "serde", version = "1.0.114", default-features = false, optional = true }
 arrayvec    = { version = "0.5.1", default-features = false }
+typic       = "0.3.0"
 
 [dev-dependencies]
 static_assertions = "1.1.0"

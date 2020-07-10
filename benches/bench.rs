@@ -14,7 +14,7 @@ pub fn gpt(c: &mut Criterion) {
     group.bench_function("New", |b| {
         b.iter(|| {
             //
-            NewGpt::read_bytes(black_box(GPT))
+            NewGpt::read_bytes(black_box(GPT), 512)
         })
     });
 }
