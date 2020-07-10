@@ -141,8 +141,13 @@ impl Gpt {
     ///
     /// - If `dest` does.
     #[cfg(feature = "std")]
-    pub fn write<WS: std::io::Write + std::io::Seek>(&self, dest: WS) -> Result<()> {
-        todo!()
+    pub fn write<WS: std::io::Write + std::io::Seek>(&self, mut dest: WS) -> Result<()> {
+        self.write_fn(|offset, buf| {
+            dest.seek(std::io::SeekFrom::Start(offset))
+                .or(Err(ReadError))?;
+            dest.write_all(buf).or(Err(ReadError))?;
+            Ok(())
+        })
     }
 
     /// Write the GUID Partition Table to `dest`.
@@ -152,11 +157,11 @@ impl Gpt {
     /// - If `dest` is too small.
     pub fn write_bytes(&self, dest: &mut [u8]) -> Result<()> {
         self.write_fn(|offset, buf| {
-            let offset = usize::try_from(offset).or(Err(()))?;
+            let offset = usize::try_from(offset).or(Err(ReadError))?;
             dest.get_mut(offset..)
-                .ok_or(())?
+                .ok_or(ReadError)?
                 .get_mut(..buf.len())
-                .ok_or(())?
+                .ok_or(ReadError)?
                 .copy_from_slice(buf);
             Ok(())
         })
@@ -186,7 +191,7 @@ impl Gpt {
     ///     Ok(())
     /// }).unwrap();
     /// ```
-    pub fn write_fn<F: FnMut(u64, &[u8]) -> Result<()>>(&self, _: F) -> Result<()> {
+    pub fn write_fn<F: FnMut(u64, &[u8]) -> Result<(), ReadError>>(&self, _: F) -> Result<()> {
         todo!()
     }
 }
