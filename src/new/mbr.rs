@@ -158,11 +158,21 @@ struct MbrPart {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{super::util::TEST_DATA, *};
     use static_assertions::*;
 
     assert_eq_size!(MbrPart, [u8; 16]);
     assert_eq_size!(ProtectiveMbr, [u8; MBR_SIZE]);
-
     assert_eq_align!(ProtectiveMbr, MbrPart, BootCode, u8);
+
+    /// Basic reading should work and validate correctly.
+    #[test]
+    fn read_test() -> Result<()> {
+        for data in TEST_DATA {
+            let _mbr = ProtectiveMbr::read(&data.bytes[..MBR_SIZE], data.block_size)?;
+        }
+        Ok(())
+    }
+
+    // TODO: Roundtrip test
 }
