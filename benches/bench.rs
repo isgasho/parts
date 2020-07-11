@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use parts::{new_gpt::Gpt as NewGpt, types::BlockSize, Gpt};
+use parts::{new::gpt::Gpt as NewGpt, types::BlockSize, Gpt};
 
 static GPT: &[u8] = include_bytes!("../tests/data/test_parts_cf");
 
