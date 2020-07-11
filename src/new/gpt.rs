@@ -130,12 +130,12 @@ impl Gpt {
     /// ```
     pub fn read_fn<F: FnMut(u64, &mut [u8]) -> Result<(), ReadError>>(
         mut fun: F,
-        _block_size: u64,
+        block_size: u64,
         _disk_size: u64,
     ) -> Result<Self> {
         let mut mbr = [0; MBR_SIZE];
         fun(0, &mut mbr).or(Err(()))?;
-        let _ = ProtectiveMbr::read(&mbr);
+        let _ = ProtectiveMbr::read(&mbr, block_size);
         todo!()
     }
 

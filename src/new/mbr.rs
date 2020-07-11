@@ -1,5 +1,13 @@
 //! Legacy Master Boot Record(MBR)
 use core::convert::TryFrom;
+use displaydoc::Display;
+use thiserror::Error;
+
+/// Invalid MBR: {0}
+#[derive(Debug, Display, Error)]
+pub struct InvalidMbr(&'static str);
+
+type Result<T> = core::result::Result<T, InvalidMbr>;
 
 /// Hard-coded legacy MBR size.
 pub const MBR_SIZE: usize = 512;
@@ -90,13 +98,25 @@ impl ProtectiveMbr {
     }
 
     /// Read the MBR from `source`.
-    pub fn read(source: &[u8]) -> &Self {
+    ///
+    /// # Errors
+    ///
+    /// - If the MBR has any other partitions.
+    pub fn read(source: &[u8], _block_size: u64) -> Result<&Self> {
         assert_eq!(source.len(), MBR_SIZE, "BUG: Source must be MBR_SIZE bytes");
         // SAFETY:
         // - `ProtectiveMbr` has alignment of 1.
-        // - `size_of::<ProtectiveMbr>` is MBR_SIZE.
+        // - `size_of::<ProtectiveMbr>` is `MBR_SIZE`.
         // - `source` is valid for `MBR_SIZE`.
-        unsafe { &*(source.as_ptr() as *const ProtectiveMbr) }
+        let mbr = unsafe { &*(source.as_ptr() as *const ProtectiveMbr) };
+        for part in &mbr.partitions[1..] {
+            if part != &MbrPart::default() {
+                return Err(InvalidMbr(
+                    "Protective MBR has non-empty partitions. Probably not GPT formatted.",
+                ));
+            }
+        }
+        Ok(mbr)
     }
 }
 
