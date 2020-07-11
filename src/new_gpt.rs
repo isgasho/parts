@@ -1,5 +1,6 @@
 //! Gpt stuff
 #![allow(missing_docs)]
+use crate::new_mbr::{ProtectiveMbr, MBR_SIZE};
 use core::{convert::TryFrom, fmt};
 use uuid::Uuid;
 
@@ -128,10 +129,13 @@ impl Gpt {
     /// .unwrap();
     /// ```
     pub fn read_fn<F: FnMut(u64, &mut [u8]) -> Result<(), ReadError>>(
-        _: F,
+        mut fun: F,
         _block_size: u64,
         _disk_size: u64,
     ) -> Result<Self> {
+        let mut mbr = [0; MBR_SIZE];
+        fun(0, &mut mbr).or(Err(()))?;
+        let _ = ProtectiveMbr::read(&mbr);
         todo!()
     }
 

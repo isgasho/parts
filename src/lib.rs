@@ -59,6 +59,7 @@ pub use gpt::{
 pub use partitions::PartitionType;
 
 pub mod new_gpt;
+pub mod new_mbr;
 
 // Re-exports
 pub use arrayvec;
