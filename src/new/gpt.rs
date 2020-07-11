@@ -1,6 +1,6 @@
 //! Gpt stuff
 #![allow(missing_docs)]
-use crate::new_mbr::{ProtectiveMbr, MBR_SIZE};
+use super::mbr::{ProtectiveMbr, MBR_SIZE};
 use core::{convert::TryFrom, fmt};
 use uuid::Uuid;
 

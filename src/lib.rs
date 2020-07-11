@@ -58,8 +58,8 @@ pub use gpt::{
 };
 pub use partitions::PartitionType;
 
-pub mod new_gpt;
-pub mod new_mbr;
+#[doc(hidden)]
+pub mod new;
 
 // Re-exports
 pub use arrayvec;
