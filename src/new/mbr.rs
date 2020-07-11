@@ -31,8 +31,7 @@ const SIGNATURE: [u8; 2] = [85, 170];
 
 /// Legacy MBR boot code.
 ///
-/// Required because a bare array wouldn't be `Copy`.
-#[derive(Copy, Clone)]
+/// Required because a bare array doesn't implement traits we need.
 #[repr(transparent)]
 struct BootCode([u8; 440]);
 
@@ -48,8 +47,14 @@ impl Default for BootCode {
     }
 }
 
+impl core::fmt::Debug for BootCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BootCode").finish()
+    }
+}
+
 /// GPT Protective MBR
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(Debug, PartialEq))]
 #[repr(C)]
 pub struct ProtectiveMbr {
     /// Bios boot code. Unused by GPT.
@@ -196,5 +201,43 @@ mod tests {
         Ok(())
     }
 
-    // TODO: Roundtrip test
+    /// Create protective a MBR that matches existing.
+    #[test]
+    fn new() -> Result<()> {
+        for data in TEST_DATA {
+            let last_lba = (data.bytes.len() / data.block_size as usize) - 1;
+            let new = &ProtectiveMbr::new(last_lba as u64);
+            let source_mbr = ProtectiveMbr::read(&data.bytes[..MBR_SIZE], data.block_size)?;
+            let part: &MbrPart = &source_mbr.partitions[0];
+            // NOTE: GNU Parted is buggy.
+            // Remove this when it stops being buggy.
+            if part.start_chs == [0, 1, 0] && part.end_chs == [254, 255, 255] {
+                continue;
+            }
+            assert_eq!(new, source_mbr);
+        }
+        Ok(())
+    }
+
+    /// A correct Protective MBR can be read and written out without changes.
+    #[test]
+    fn roundtrip() -> Result<()> {
+        for data in TEST_DATA {
+            let source_mbr_bytes = &data.bytes[..MBR_SIZE];
+            let source_mbr = ProtectiveMbr::read(source_mbr_bytes, data.block_size)?;
+            let mut mbr_bytes = [0u8; MBR_SIZE];
+            source_mbr.write(&mut mbr_bytes, data.block_size);
+            assert_eq!(
+                &mbr_bytes[..],
+                &source_mbr_bytes[..],
+                "Written MBR did not match read MBR"
+            );
+            let mbr = ProtectiveMbr::read(&mbr_bytes, 0)?;
+            assert_eq!(
+                mbr, source_mbr,
+                "MBR was not read the same as it was written?"
+            );
+        }
+        Ok(())
+    }
 }
