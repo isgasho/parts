@@ -156,19 +156,20 @@ impl Header {
         if self.signature != SIGNATURE {
             panic!("Invalid Signature");
         }
+        // Up to `self.header_size` bytes
+        let source =
+            &source[..usize::try_from(self.header_size).expect("Header size would overflow usize")];
         let mut digest = crc32::Digest::new(crc32::IEEE);
         // Header bytes up to the CRC field, which starts at offset 16.
         digest.write(&source[..16]);
         // Write 4 zeros for the CRC.
-        digest.write(&[0, 0, 0, 0]);
-        // Continue after up until `self.header_size`
-        digest.write(
-            &source[20..]
-                [..usize::try_from(self.header_size).expect("Header size would overflow usize")],
-        );
+        digest.write(&0u32.to_ne_bytes());
+        // Continue for the rest of the slice.
+        digest.write(&source[20..]);
         let crc = digest.sum32();
         if self.header_crc32 != crc {
-            panic!("Invalid CRC");
+            let e = self.header_crc32;
+            panic!("Invalid CRC: Got {}, expected {}", crc, e);
         }
         if self.this_lba != this_lba {
             panic!("Invalid this_lba");
@@ -179,9 +180,26 @@ impl Header {
 
 #[cfg(test)]
 mod tests {
-    use super::{super::util::TEST_DATA, *};
+    use super::{
+        super::{
+            mbr::MBR_SIZE,
+            util::{Result, TEST_DATA},
+        },
+        *,
+    };
     use static_assertions::*;
 
     assert_eq_size!(HeaderPre, [u8; 16]);
     assert_eq_align!(HeaderPre, u8);
+
+    /// Basic reading should work and validate correctly.
+    #[test]
+    fn read_test() -> Result<()> {
+        for data in TEST_DATA {
+            // Skip the MBR, limit to block size.
+            let bytes = &data.bytes[MBR_SIZE..][..data.block_size as usize];
+            let _header = Header::read(bytes, data.block_size, 1);
+        }
+        Ok(())
+    }
 }
