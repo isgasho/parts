@@ -102,6 +102,10 @@ impl ProtectiveMbr {
     /// # Errors
     ///
     /// - If the MBR has any other partitions.
+    ///
+    /// # Panics
+    ///
+    /// - If `source` is not [`MBR_SIZE`] bytes.
     pub fn read(source: &[u8], _block_size: u64) -> Result<&Self> {
         assert_eq!(source.len(), MBR_SIZE, "BUG: Source must be MBR_SIZE bytes");
         // SAFETY:
@@ -117,6 +121,23 @@ impl ProtectiveMbr {
             }
         }
         Ok(mbr)
+    }
+
+    /// Write a GPT Protective MBR to `dest`
+    ///
+    /// # Panics
+    ///
+    /// - If `dest` is not [`MBR_SIZE`] bytes.
+    pub fn write(&self, dest: &mut [u8], _block_size: u64) {
+        assert_eq!(dest.len(), MBR_SIZE, "BUG: Dest must be MBR_SIZE bytes");
+        // SAFETY:
+        // - `self` is valid and aligned.
+        // - `size_of::<ProtectiveMbr>` is MBR_SIZE.
+        let raw = unsafe {
+            let ptr = self as *const ProtectiveMbr as *const u8;
+            core::slice::from_raw_parts(ptr, MBR_SIZE)
+        };
+        dest.copy_from_slice(raw);
     }
 }
 
