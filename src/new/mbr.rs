@@ -33,6 +33,7 @@ const SIGNATURE: [u8; 2] = [85, 170];
 ///
 /// Required because a bare array wouldn't be `Copy`.
 #[derive(Copy, Clone)]
+#[repr(transparent)]
 struct BootCode([u8; 440]);
 
 impl PartialEq for BootCode {
