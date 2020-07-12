@@ -29,42 +29,6 @@ const PARTITION_ENTRY_SIZE: u32 = 128;
 /// partitions
 const MIN_PARTITION_BYTES: u64 = 16384;
 
-/// Start of the GPT Header Structure
-///
-/// This is only the first 3 fields,
-/// used to determine what kind of header to actually parse.
-#[repr(C, packed)]
-pub struct HeaderPre {
-    /// Hard-coded to [`SIGNATURE`]
-    signature: u64,
-
-    /// Hard-coded to [`REVISION`]
-    revision: u32,
-
-    /// Soft-coded to [`MIN_HEADER_SIZE`]
-    ///
-    /// Must be header_size >= [`MIN_HEADER_SIZE`] and header_size <=
-    /// logical block size.
-    header_size: u32,
-}
-
-impl HeaderPre {
-    pub fn read(source: &[u8], block_size: u64) -> &Self {
-        assert!(
-            source.len() >= MIN_HEADER_SIZE as usize
-                && source.len()
-                    <= usize::try_from(block_size)
-                        .expect("Block size *way* too large, would overflow usize"),
-            "BUG: Source must be between MIN_HEADER_SIZE and block_size bytes"
-        );
-        // SAFETY:
-        // - `HeaderPre` has alignment of 1.
-        // - `size_of::<HeaderPre>` is 16.
-        // - `source` is valid for `16`.
-        unsafe { &*(source.as_ptr() as *const HeaderPre) }
-    }
-}
-
 /// Header kind
 pub enum HeaderKind {
     Primary,
