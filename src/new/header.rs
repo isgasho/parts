@@ -299,8 +299,8 @@ mod tests {
     use pretty_assertions::assert_eq;
     use static_assertions::*;
 
-    assert_eq_size!(HeaderPre, [u8; 16]);
-    assert_eq_align!(HeaderPre, u8);
+    assert_eq_size!(Header, [u8; MIN_HEADER_SIZE as usize]);
+    assert_eq_align!(Header, u8);
 
     /// Basic reading should work and validate correctly.
     #[test]
@@ -350,4 +350,12 @@ mod tests {
         }
         Ok(())
     }
+
+    // TODO: Test weird headers with special cases
+    // "If the size of the GUID Partition Entry Array is not an even multiple of
+    // the logical block size, then any space left over in the last logical
+    // block is Reserved and not covered by the Partition Entry Array CRC32
+    // field."
+    //
+    //
 }
