@@ -205,7 +205,7 @@ impl Header {
         // - `Header` is `repr(C)`.
         // - `size_of::<Header>` is `MIN_HEADER_SIZE`.
         // - `source` is valid for `MIN_HEADER_SIZE`.
-        let header = unsafe { &*(source.as_ptr() as *const Header) };
+        let header = unsafe { &*(source.as_ptr() as *const Self) };
         header.validate(source, lba);
         header
     }
@@ -231,8 +231,8 @@ impl Header {
         // - `Header` is `repr(C, packed)`
         // - `self` is not mutated
         let raw = unsafe {
-            let ptr = self as *mut Header as *mut u8;
-            slice::from_raw_parts_mut(ptr, mem::size_of::<Header>())
+            let ptr = self as *mut Self as *mut u8;
+            slice::from_raw_parts_mut(ptr, mem::size_of::<Self>())
         };
         digest.write(raw);
         // Set header_crc32. Not through `self` assignment since
