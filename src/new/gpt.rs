@@ -199,3 +199,6 @@ impl Gpt {
         todo!()
     }
 }
+
+// TODO: Partitions push. Enum, Simple with size in MiB,
+// advanced with specific LBA?
