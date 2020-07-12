@@ -137,6 +137,12 @@ impl Header {
         header.validate(source, lba);
         header
     }
+
+    /// UEFI UUID's are stored in a mixed endian format,
+    /// so this will correct it.
+    pub fn uuid(&self) -> Uuid {
+        Uuid::from_bytes_me(self.disk_guid.to_bytes())
+    }
 }
 
 impl Header {
@@ -198,7 +204,13 @@ mod tests {
         for data in TEST_DATA {
             // Skip the MBR, limit to block size.
             let bytes = &data.bytes[MBR_SIZE..][..data.block_size as usize];
-            let _header = Header::read(bytes, data.block_size, 1);
+            let header = Header::read(bytes, data.block_size, 1);
+            assert_eq!(
+                header.uuid(),
+                Uuid::parse(data.disk).unwrap(),
+                "UUID didn't match test data"
+            );
+            assert_eq!(header.uuid().variant(), uuid::Variant::Rfc4122);
         }
         Ok(())
     }

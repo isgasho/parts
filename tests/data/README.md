@@ -21,6 +21,8 @@ Expected Partition UUID: F3099835-0F4A-4D49-B012-7078CF1B4045
 GPT label, one ext4-labeled partition, name "Test",
 starting at 1MiB and ending at 9MiB, for a partition size of 8MiB.
 
+The protective MBR start and end CHS is incorrect
+
 ### `test_parts_cf`
 
 An empty 10MiB file, created with cfdisk. Treated as if a 512 block size.
@@ -32,3 +34,5 @@ GPT label, one "Linux filesystem data", no name.
 starting at 1MiB and ending at 9MiB, for a partition size of 8MiB.
 
 `cfdisk` automatically aligns on 1MiB, unlike parted.
+
+cfdisk generates random UUID's with an invalid version.
