@@ -113,7 +113,7 @@ impl Gpt {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use parts::new_gpt::Gpt;
+    /// # use parts::new::gpt::Gpt;
     /// # fn no_std_read_at(_: u64, _:&mut [u8]) {}
     /// # let disk_size = 0;
     /// # let block_size = 0;
@@ -186,7 +186,7 @@ impl Gpt {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use parts::new_gpt::Gpt;
+    /// # use parts::new::gpt::Gpt;
     /// # fn no_std_write_at(_: u64, _: &[u8]) {}
     /// # let gpt = Gpt::new(0, 0);
     ///
