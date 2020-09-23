@@ -84,6 +84,7 @@ fn validate<F: FnMut(Offset, &mut [u8]) -> Result<()>, CB: FnMut(usize, &[u8]) -
 /// the user.
 pub trait GptHelper<Container> {
     /// Create a new `Container`
+    #[allow(clippy::new_ret_no_self)]
     fn new() -> Container;
 
     /// Get a slice of [`Partition`]s from `Container`
