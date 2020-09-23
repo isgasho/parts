@@ -1,5 +1,5 @@
 [package]
-name    = "parts"
+name = "parts"
 version = "0.1.0"
 authors = ["Diana"]
 edition = "2018"
@@ -10,20 +10,20 @@ license = "MIT OR Apache-2.0"
 description = "A GPT Partition Manager"
 
 [dependencies]
-uuid        = { git = "https://github.com/DianaNites/uuid", branch = "main", default-features = false }
-crc         = { version = "1.8.1", default-features = false }
+uuid = { git = "https://github.com/DianaNites/uuid", branch = "main", default-features = false }
+crc = { version = "1.8.1", default-features = false }
 derive_more = "0.99.10"
-displaydoc  = { version = "0.1.7", default-features = false }
-thiserror   = { version = "1.0.20", optional = true }
+displaydoc = { version = "0.1.7", default-features = false }
+thiserror = { version = "1.0.20", optional = true }
 serde_crate = { package = "serde", version = "1.0.116", default-features = false, optional = true }
-arrayvec    = { version = "0.5.1", default-features = false }
+arrayvec = { version = "0.5.1", default-features = false }
 
 [dev-dependencies]
 static_assertions = "1.1.0"
-anyhow            = "1.0.32"
-thiserror         = "1.0.20"
+anyhow = "1.0.32"
+thiserror = "1.0.20"
 pretty_assertions = "0.6.1"
-criterion         = "0.3.3"
+criterion = "0.3.3"
 
 [features]
 default = ["std", "serde"]
@@ -42,8 +42,8 @@ nightly = []
 
 [package.metadata.docs.rs]
 features = ["nightly"]
-targets  = []
+targets = []
 
 [[bench]]
-name    = "bench"
+name = "bench"
 harness = false
