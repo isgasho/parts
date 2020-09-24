@@ -1,10 +1,12 @@
 //! Legacy Master Boot Record(MBR)
 use core::convert::TryFrom;
 use displaydoc::Display;
+#[cfg(feature = "std")]
 use thiserror::Error;
 
 /// Invalid MBR
-#[derive(Debug, Display, Error)]
+#[derive(Debug, Display)]
+#[cfg_attr(feature = "std", derive(Error))]
 pub enum Error {
     /// unsupported legacy MBR
     NotProtective,
@@ -59,7 +61,7 @@ impl Default for BootCode {
 }
 
 impl core::fmt::Debug for BootCode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("BootCode").finish()
     }
 }

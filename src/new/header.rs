@@ -2,11 +2,13 @@
 use core::{convert::TryFrom, mem, slice};
 use crc::{crc32, Hasher32};
 use displaydoc::Display;
+#[cfg(feature = "std")]
 use thiserror::Error;
 use uuid::Uuid;
 
 /// Invalid MBR: {0}
-#[derive(Debug, Display, Error)]
+#[derive(Debug, Display)]
+#[cfg_attr(feature = "std", derive(Error))]
 pub struct Invalid(&'static str);
 
 // type Result<T> = core::result::Result<T, InvalidMbr>;

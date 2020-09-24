@@ -26,7 +26,7 @@ pub struct Gpt {
     uuid: Uuid,
 
     /// *Used* partitions.
-    partitions: Vec<()>,
+    partitions: &'static [()],
 
     /// Disk size.
     disk_size: u64,
@@ -37,6 +37,7 @@ pub struct Gpt {
 
 impl Gpt {
     /// Create a new, empty, GUID Partition Table.
+    #[cfg(feature = "std")]
     pub fn new(block_size: u64, disk_size: u64) -> Self {
         Self::with_uuid(block_size, disk_size, Uuid::new_v4())
     }
@@ -45,7 +46,7 @@ impl Gpt {
     pub fn with_uuid(block_size: u64, disk_size: u64, uuid: Uuid) -> Self {
         Self {
             uuid,
-            partitions: Vec::new(),
+            partitions: Default::default(),
             disk_size,
             block_size,
         }
