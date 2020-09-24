@@ -3,17 +3,29 @@ use core::convert::TryFrom;
 use displaydoc::Display;
 use thiserror::Error;
 
-/// Invalid MBR: {0}
+/// Invalid MBR
 #[derive(Debug, Display, Error)]
-pub struct InvalidMbr(&'static str);
+pub enum Error {
+    /// unsupported legacy MBR
+    NotProtective,
 
-type Result<T> = core::result::Result<T, InvalidMbr>;
+    /// unsupported legacy MBR with UEFI system partition
+    Unsupported,
+
+    /// MBR had unexpected or invalid values
+    Corrupt(&'static str),
+}
+
+type Result<T> = core::result::Result<T, Error>;
 
 /// Hard-coded legacy MBR size.
 pub const MBR_SIZE: usize = 512;
 
 /// GPT Protective OS Type
 const GPT_PROTECTIVE: u8 = 0xEE;
+
+/// UEFI System Partition OS Type
+const UEFI_SYSTEM: u8 = 0xEF;
 
 /// Starting MBR CHS
 // 0x000200u32
@@ -23,11 +35,10 @@ const START_CHS: [u8; 3] = [0, 2, 0];
 // Technically incorrect, maybe?
 // Existing implementations seem to do the same thing here, though?
 // 0xFFFFFFu32
-const END_CHS: [u8; 3] = [255, 255, 255];
+const END_CHS: [u8; 3] = [0xFF, 0xFF, 0xFF];
 
-/// Signature
-// 0xAA55u16
-const SIGNATURE: [u8; 2] = [85, 170];
+/// Signature, 0xAA55u16.
+const SIGNATURE: [u8; 2] = [0x55, 0xAA];
 
 /// Legacy MBR boot code.
 ///
@@ -119,11 +130,22 @@ impl ProtectiveMbr {
         // - `size_of::<ProtectiveMbr>` is `MBR_SIZE`.
         // - `source` is valid for `MBR_SIZE`.
         let mbr = unsafe { &*(source.as_ptr() as *const ProtectiveMbr) };
+        // NOTE: Too strict, should ignore? Spec says gotta check?
+        // Unclear if it means only for `UEFI_SYSTEM` types.
+        if mbr.signature != SIGNATURE {
+            return Err(Error::Corrupt("invalid signature"));
+        }
+        for part in &mbr.partitions {
+            match part.os_type {
+                UEFI_SYSTEM => return Err(Error::Unsupported),
+                GPT_PROTECTIVE => (),
+                0 => (),
+                _ => return Err(Error::NotProtective),
+            }
+        }
         for part in &mbr.partitions[1..] {
             if part != &MbrPart::default() {
-                return Err(InvalidMbr(
-                    "Protective MBR has non-empty partitions. Probably not GPT formatted.",
-                ));
+                return Err(Error::NotProtective);
             }
         }
         Ok(mbr)
